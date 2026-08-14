@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  actions: write # to dispatch docker-publish.yml as the final step
 
 jobs:
   release:
