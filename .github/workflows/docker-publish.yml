@@ -1,9 +1,20 @@
 name: docker-publish
 
+# Runs on a "v*" tag push, and can also be dispatched manually — needed
+# because cut-release.yml creates its tag/release using the default
+# GITHUB_TOKEN, and GitHub does not chain further workflow runs off events
+# caused by that token (except workflow_dispatch/repository_dispatch). So
+# cut-release.yml explicitly dispatches this workflow as its final step.
+
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build/publish, e.g. 0.3.1 (no leading v)'
+        required: true
 
 permissions:
   contents: read
@@ -14,11 +25,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version && format('v{0}', inputs.version) || github.ref }}
 
       - name: Derive image tags
         id: meta
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ inputs.version || github.ref_name }}"
+          VERSION="${VERSION#v}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           if [[ "$VERSION" == *-* ]]; then
             echo "channel=${VERSION#*-}" >> "$GITHUB_OUTPUT"
