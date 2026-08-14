@@ -61,6 +61,12 @@ http://<signalk-host>:8000/mcp
 ports; check that plugin's settings if the endpoint isn't reachable from
 where you expect.)
 
+[**signalk-ollama**](https://github.com/BoatHacks/signalk-ollama) is a
+ready-made client: install it alongside this plugin and its chat traffic
+(including its own playground webapp) picks up this container as its
+default MCP connection at `http://localhost:8000/mcp` automatically — no
+extra configuration needed as long as it's running on the default port.
+
 ## Development
 
 ```bash
