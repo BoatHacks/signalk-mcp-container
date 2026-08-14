@@ -4,26 +4,23 @@
 #
 # Built multi-arch (linux/amd64, linux/arm64). signalk-mcp-server depends on
 # isolated-vm, a native addon: its prebuilt binaries may not cover
-# linux-arm64-musl, in which case npm falls back to compiling from source —
-# so the builder stage carries a full toolchain (python3/make/g++/etc.),
-# even though the final runtime image doesn't need one.
-FROM node:20-alpine AS builder
-
-RUN apk add --no-cache python3 make g++
+# linux-arm64-musl, in which case npm falls back to compiling from source, so
+# a toolchain (python3/make/g++) is installed for the npm install and removed
+# right after — a multi-stage COPY of just node_modules + bin symlinks was
+# tried first but broke npm's hoisted dependency resolution (supergateway's
+# own "yargs" dependency went missing at runtime); installing and stripping
+# in place avoids that entirely.
+FROM node:20-alpine
 
 ARG MCP_SERVER_VERSION=1.0.8
 ARG SUPERGATEWAY_VERSION=3.4.3
 
-RUN npm install -g \
-    signalk-mcp-server@${MCP_SERVER_VERSION} \
-    supergateway@${SUPERGATEWAY_VERSION}
-
-FROM node:20-alpine
-
-COPY --from=builder /usr/local/lib/node_modules /usr/local/lib/node_modules
-COPY --from=builder /usr/local/bin/signalk-mcp-server /usr/local/bin/signalk-mcp-server
-COPY --from=builder /usr/local/bin/supergateway /usr/local/bin/supergateway
-RUN adduser -D -H mcp
+RUN apk add --no-cache --virtual .build-deps python3 make g++ \
+    && npm install -g \
+        signalk-mcp-server@${MCP_SERVER_VERSION} \
+        supergateway@${SUPERGATEWAY_VERSION} \
+    && apk del .build-deps \
+    && adduser -D -H mcp
 
 ENV SIGNALK_HOST=host.docker.internal \
     SIGNALK_PORT=3000 \

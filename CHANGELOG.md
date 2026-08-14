@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-08-14
+
+### Fixed
+
+- `docker/Dockerfile`: the container failed to start —
+  `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'yargs' imported from
+  /usr/local/bin/supergateway`. The 0.1.2 multi-arch fix had moved the
+  `npm install -g` into a separate builder stage and copied only
+  `node_modules` plus the two bin symlinks into the final image, which
+  didn't reliably preserve npm's hoisted dependency layout. Reverted to
+  installing (and then removing the build toolchain) in a single stage.
+
 ## [0.1.3] - 2026-08-14
 
 ### Fixed
