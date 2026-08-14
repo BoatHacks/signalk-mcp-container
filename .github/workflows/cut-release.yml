@@ -60,15 +60,18 @@ jobs:
             --title "v${{ inputs.version }}" \
             --notes-file release-notes.md
 
-      - name: Dispatch docker-publish
+      - name: Dispatch docker-publish and publish
         # The tag push and release create above used the default
-        # GITHUB_TOKEN, so they don't trigger docker-publish.yml's own
-        # "push: tags" / would-be "release: published" listeners (GitHub
+        # GITHUB_TOKEN, so they don't trigger docker-publish.yml's "push:
+        # tags" or publish.yml's "release: published" listeners (GitHub
         # doesn't chain workflow runs off GITHUB_TOKEN-caused events except
-        # workflow_dispatch/repository_dispatch). Fire it explicitly.
+        # workflow_dispatch/repository_dispatch). Fire both explicitly.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh workflow run docker-publish.yml \
+            --ref "v${{ inputs.version }}" \
+            -f version="${{ inputs.version }}"
+          gh workflow run publish.yml \
             --ref "v${{ inputs.version }}" \
             -f version="${{ inputs.version }}"

@@ -1,8 +1,20 @@
 name: publish
 
+# Runs on a published GitHub release, and can also be dispatched manually —
+# needed because cut-release.yml creates its release using the default
+# GITHUB_TOKEN, and GitHub does not chain further workflow runs off events
+# caused by that token (except workflow_dispatch/repository_dispatch). So
+# cut-release.yml explicitly dispatches this workflow as a final step, the
+# same way it does for docker-publish.yml.
+
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish, e.g. 0.3.1 (no leading v)'
+        required: true
 
 permissions:
   contents: read
@@ -13,6 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version && format('v{0}', inputs.version) || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
