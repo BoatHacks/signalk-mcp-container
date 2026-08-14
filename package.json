@@ -1,6 +1,6 @@
 {
   "name": "signalk-mcp-container",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "SignalK plugin that runs signalk-mcp-server as a managed container, exposing marine data to MCP clients (e.g. Claude) over the network.",
   "type": "module",
   "main": "dist/index.js",
@@ -24,7 +24,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/boathacks/signalk-mcp-container.git"
+    "url": "git+https://github.com/BoatHacks/signalk-mcp-container.git"
   },
   "engines": {
     "node": ">=22"
