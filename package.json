@@ -1,0 +1,57 @@
+{
+  "name": "signalk-mcp-container",
+  "version": "0.1.0",
+  "description": "SignalK plugin that runs signalk-mcp-server as a managed container, exposing marine data to MCP clients (e.g. Claude) over the network.",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "docker/Dockerfile"
+  ],
+  "scripts": {
+    "build": "tsc && npm run build:panel",
+    "build:panel": "webpack --config webpack.config.cjs",
+    "test": "tsc --noEmit",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "signalk-node-server-plugin",
+    "signalk-category-ai",
+    "mcp",
+    "model-context-protocol"
+  ],
+  "author": "BoatHacks",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/boathacks/signalk-mcp-container.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "signalk": {
+    "requires": [
+      "signalk-container"
+    ]
+  },
+  "dependencies": {
+    "signalk-container-helper": "^0.6.1"
+  },
+  "peerDependencies": {
+    "react": "^19"
+  },
+  "devDependencies": {
+    "@signalk/server-api": "^2.7.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0",
+    "typescript": "^5.6.0",
+    "webpack": "^5.94.0",
+    "webpack-cli": "^5.1.4",
+    "ts-loader": "^9.5.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
