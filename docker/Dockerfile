@@ -1,15 +1,29 @@
 # Wraps signalk-mcp-server (stdio-only MCP server, no HTTP transport upstream)
 # with supergateway so it can run as a long-lived, network-reachable service
 # under signalk-container-helper's ManagedContainer (HTTP readiness/health checks).
-FROM node:20-alpine
+#
+# Built multi-arch (linux/amd64, linux/arm64). signalk-mcp-server depends on
+# isolated-vm, a native addon: its prebuilt binaries may not cover
+# linux-arm64-musl, in which case npm falls back to compiling from source —
+# so the builder stage carries a full toolchain (python3/make/g++/etc.),
+# even though the final runtime image doesn't need one.
+FROM node:20-alpine AS builder
+
+RUN apk add --no-cache python3 make g++
 
 ARG MCP_SERVER_VERSION=1.0.8
 ARG SUPERGATEWAY_VERSION=3.4.3
 
 RUN npm install -g \
     signalk-mcp-server@${MCP_SERVER_VERSION} \
-    supergateway@${SUPERGATEWAY_VERSION} \
-    && adduser -D -H mcp
+    supergateway@${SUPERGATEWAY_VERSION}
+
+FROM node:20-alpine
+
+COPY --from=builder /usr/local/lib/node_modules /usr/local/lib/node_modules
+COPY --from=builder /usr/local/bin/signalk-mcp-server /usr/local/bin/signalk-mcp-server
+COPY --from=builder /usr/local/bin/supergateway /usr/local/bin/supergateway
+RUN adduser -D -H mcp
 
 ENV SIGNALK_HOST=host.docker.internal \
     SIGNALK_PORT=3000 \

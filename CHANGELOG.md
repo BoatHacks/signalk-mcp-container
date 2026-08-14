@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-08-14
+
+### Fixed
+
+- `docker/Dockerfile` / `docker-publish.yml`: build and publish the
+  container image multi-arch (`linux/amd64`, `linux/arm64`). The published
+  image previously only had an amd64 manifest, so it failed to pull on
+  arm64 hosts (e.g. Raspberry Pi). The Dockerfile now uses a builder stage
+  with a full toolchain (python3/make/g++) since `signalk-mcp-server`'s
+  `isolated-vm` dependency (a native addon) may not have prebuilt
+  binaries for `linux-arm64-musl` and would otherwise fail to compile on
+  Alpine's minimal image.
+
 ## [0.1.1] - 2026-08-14
 
 ### Changed
