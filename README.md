@@ -49,6 +49,22 @@ then restart the server and enable the plugin from **Server → Plugin Config**.
 The admin UI panel shows container status, lets you pick an image tag, and
 apply updates — all via `signalk-container-helper`'s reusable UI components.
 
+## Updating
+
+A new image tag being published to GHCR does **not** by itself update an
+already-running container — a floating tag like `latest` only takes effect
+the next time the container is actually recreated. `podman pull` /
+`docker pull` alone just refreshes the local image cache; the existing
+container, if one is already running, keeps running from whatever image it
+was originally created with.
+
+To pick up a new image, use the admin UI panel's **update** controls (which
+call `signalk-container-helper`'s update/apply routes and recreate the
+container), or restart the `signalk-mcp-container` plugin from **Server →
+Plugin Config**. A manual `podman pull` followed by just restarting the
+existing container (without recreating it) will keep running the old image
+and can look like the update silently failed.
+
 ## Connecting an MCP client
 
 Once running, point an MCP client capable of Streamable HTTP transport at:
