@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2026-08-15
+
+### Added
+
+- `docker/healthcheck.sh`, replacing the plain `wget .../healthz` Docker
+  `HEALTHCHECK`. In addition to that liveness check (supergateway's HTTP
+  layer is up), it now also probes the Signal K REST API directly with the
+  container's configured `SIGNALK_HOST`/`PORT`/`TLS`/`TOKEN` settings, and
+  reports unhealthy if that probe gets `401`. A missing or invalid
+  `SIGNALK_TOKEN` is now flagged through the container's own health status
+  (`docker inspect`/`docker ps`, and by extension the container manager)
+  instead of only showing up in container logs or as a downstream
+  `execute_code` failure. supergateway's own `/healthz` is a hardcoded
+  static "ok" with no hook for this, so it needed a dedicated script.
+- CI: `docker-smoke-test` now runs `healthcheck.sh` against a stub Signal K
+  server (`.github/scripts/ci-stub-signalk.py`) and asserts it fails
+  without a token / with a wrong token, and passes with the correct one.
+
 ## [0.1.8] - 2026-08-15
 
 ### Added

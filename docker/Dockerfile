@@ -35,8 +35,14 @@ ENV SIGNALK_HOST=host.docker.internal \
 
 EXPOSE 8000
 
+COPY docker/healthcheck.sh /healthcheck.sh
+RUN chmod +x /healthcheck.sh
+
+# Checks supergateway's HTTP layer AND that the configured SignalK
+# connection (including SIGNALK_TOKEN, if set) actually works — see
+# healthcheck.sh for why supergateway's own /healthz alone can't do this.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -qO- "http://127.0.0.1:${PORT}/healthz" || exit 1
+    CMD /healthcheck.sh
 
 USER mcp
 

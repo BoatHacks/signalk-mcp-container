@@ -90,6 +90,53 @@ jobs:
       - name: Container still alive (didn't segfault)
         run: docker inspect -f '{{.State.Running}}' mcp-smoke | grep -q true
 
+      - name: Start stub SignalK server (401 unless Authorization matches)
+        run: |
+          python3 .github/scripts/ci-stub-signalk.py &
+          echo $! > /tmp/stub-signalk.pid
+
+      - name: healthcheck.sh fails without a token (401 from stub SignalK)
+        run: |
+          # --network host to reach the stub server at 127.0.0.1:3001; a
+          # non-default PORT avoids clashing with mcp-smoke, still up on
+          # host port 8000 via its own -p mapping.
+          docker run -d --name mcp-no-token --network host \
+            -e PORT=8001 \
+            -e SIGNALK_HOST=127.0.0.1 -e SIGNALK_PORT=3001 -e SIGNALK_TLS=false \
+            signalk-mcp-server-container:ci
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8001/healthz >/dev/null && break
+            sleep 1
+          done
+          if docker exec mcp-no-token /healthcheck.sh; then
+            echo "::error::healthcheck.sh passed with no token against a SignalK that requires one"
+            docker logs mcp-no-token
+            exit 1
+          fi
+          docker rm -f mcp-no-token >/dev/null
+
+      - name: healthcheck.sh passes with the correct token
+        run: |
+          docker run -d --name mcp-good-token --network host \
+            -e PORT=8002 \
+            -e SIGNALK_HOST=127.0.0.1 -e SIGNALK_PORT=3001 -e SIGNALK_TLS=false \
+            -e SIGNALK_TOKEN=good-token \
+            signalk-mcp-server-container:ci
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8002/healthz >/dev/null && break
+            sleep 1
+          done
+          docker exec mcp-good-token /healthcheck.sh || {
+            echo "::error::healthcheck.sh failed with a valid token"
+            docker logs mcp-good-token
+            exit 1
+          }
+          docker rm -f mcp-good-token >/dev/null
+
+      - name: Stop stub SignalK server
+        if: always()
+        run: kill "$(cat /tmp/stub-signalk.pid)" 2>/dev/null || true
+
       - name: Dump logs
         if: always()
         run: docker logs mcp-smoke || true

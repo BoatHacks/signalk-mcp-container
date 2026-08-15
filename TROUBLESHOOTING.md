@@ -17,7 +17,7 @@ matching symptom below.
 | 1 | `Startup failed: Failed to pull ghcr.io/boathacks/signalk-mcp-server-container:latest: Registry authentication failed.` | Signal K plugin startup (this plugin's `signalk-container` runtime) | GHCR container packages built via a workflow's `GITHUB_TOKEN` default to **private** regardless of the repo's own visibility | Manual, once — package settings ([below](#1-registry-authentication-failed-pulling-the-image)) |
 | 2 | `🔧 error calling execute_code: MCP tools/call: SSE response carried no data frame` | signalk-ollama playground | signalk-ollama's MCP client only read the *first* SSE event of a Streamable HTTP response; a longer tool call streams progress notifications before the real result | [signalk-ollama v0.2.4](https://github.com/BoatHacks/signalk-ollama/releases/tag/v0.2.4) ([below](#2-sse-response-carried-no-data-frame-signalk-ollama-side)) |
 | 3 | `Child exited: code=null, signal=SIGSEGV` on every `execute_code` call, container logs | This container (`signalk-mcp-container`) | `signalk-mcp-server`'s code-execution mode depends on `isolated-vm`, a native V8-isolate addon that segfaults under musl libc — the image was built on `node:20-alpine` | [v0.1.6](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.6) ([below](#3-execute_code-segfaults-sigsegv-this-container)) |
-| 4 | `SignalK HTTP connection failed: HTTP 401: Unauthorized` in container logs; tool calls that touch real vessel data fail | This container | Signal K's security rejects anonymous reads; `signalk-mcp-server` does support a token (undocumented upstream) but this plugin didn't expose a way to set or request one yet | [v0.1.7](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.7) adds a token field; [v0.1.8](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.8) adds one-click self-service request via Signal K's access-request API ([below](#4-http-401-unauthorized-signal-k-security)) |
+| 4 | `SignalK HTTP connection failed: HTTP 401: Unauthorized` in container logs; tool calls that touch real vessel data fail | This container | Signal K's security rejects anonymous reads; `signalk-mcp-server` does support a token (undocumented upstream) but this plugin didn't expose a way to set, request, or detect a missing one yet | [v0.1.7](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.7) adds a token field; [v0.1.8](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.8) adds one-click self-service request; [v0.1.9](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.9) makes the container's own health check catch a missing/bad token instead of only logging it ([below](#4-http-401-unauthorized-signal-k-security)) |
 
 Issues 1, 3, and 4 are all fixed or worked around on the
 `signalk-mcp-container` side; issue 2 lives in `signalk-ollama`'s MCP client
@@ -174,8 +174,17 @@ Failed to connect to SignalK: Failed to connect to SignalK server: HTTP 401: Una
 Note `tools/list` still succeeds even with this error present (the tool
 *definitions* don't require a live Signal K connection) — it's only calls
 that actually touch vessel data (e.g. `getVesselState()` inside
-`execute_code`) that fail. This can make the 401 easy to miss until a real
-data-fetching call is attempted.
+`execute_code`) that fail. This used to make the 401 easy to miss until a
+real data-fetching call was attempted.
+
+Since `signalk-mcp-container` v0.1.9, this is no longer buried in logs
+alone: `docker/healthcheck.sh` (the container's Docker `HEALTHCHECK`)
+independently probes the Signal K REST API with the exact same connection
+settings the container is configured with, and reports unhealthy if that
+probe 401s — visible via `docker inspect`/`docker ps`, and by extension
+through anything the container manager (`signalk-container`) surfaces for
+container health. Previously the `HEALTHCHECK` only checked supergateway's
+own `/healthz`, a hardcoded static "ok" with no way to reflect this.
 
 **Root cause**: `signalk-mcp-server` connects to Signal K as a plain
 external HTTP/WS client, and if Signal K's security is enabled and rejects
