@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-08-15
+
+### Fixed
+
+- `docker/Dockerfile`: every `execute_code` tool call crashed the
+  container's MCP process with `SIGSEGV` (killing the session mid-request).
+  Root cause: `signalk-mcp-server`'s "code" execution mode depends on
+  `isolated-vm`, a native V8-isolate addon that is known to segfault under
+  musl libc — the image was built on `node:20-alpine`. Switched the base
+  image to `node:20-bookworm-slim` (glibc); `execute_code` no longer
+  crashes the process.
+- CI: added a Docker build + smoke test (`docker-smoke-test` job in
+  `test.yml`) that builds the real image and calls `execute_code` through
+  it — `npm test` only typechecks the plugin and never caught this, since
+  the crash lives entirely inside the container image.
+
+### Changed
+
+- README: documented that Signal K's "Allow readonly access to API and WS
+  without login" security setting must be enabled for this container to
+  reach vessel data — `signalk-mcp-server` has no auth-token support of its
+  own, so a secured Signal K server otherwise answers every request with
+  `HTTP 401: Unauthorized`.
+
 ## [0.1.5] - 2026-08-14
 
 ### Changed

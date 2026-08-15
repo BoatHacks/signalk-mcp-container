@@ -16,3 +16,69 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+
+  docker-smoke-test:
+    # Builds the actual container image and exercises the execute_code tool
+    # end to end — npm run build only typechecks the plugin, it never
+    # catches a runtime break in the image itself (this is the job that
+    # would have caught the isolated-vm/musl SIGSEGV before it shipped).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t signalk-mcp-server-container:ci -f docker/Dockerfile .
+
+      - name: Run container
+        run: |
+          docker run -d --name mcp-smoke -p 8000:8000 \
+            -e SIGNALK_HOST=127.0.0.1 -e SIGNALK_PORT=1 -e SIGNALK_TLS=false \
+            signalk-mcp-server-container:ci
+
+      - name: Wait for health endpoint
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8000/healthz >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          echo "::error::health endpoint never came up"
+          docker logs mcp-smoke
+          exit 1
+
+      - name: Initialize MCP session
+        run: |
+          curl -sf -D headers.txt -o /dev/null \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci-smoke-test","version":"1.0.0"}}}' \
+            http://127.0.0.1:8000/mcp
+          SESSION_ID=$(grep -i '^mcp-session-id:' headers.txt | awk '{print $2}' | tr -d '\r')
+          echo "SESSION_ID=$SESSION_ID" >> "$GITHUB_ENV"
+          curl -sf -o /dev/null \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -H "mcp-session-id: $SESSION_ID" \
+            -d '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            http://127.0.0.1:8000/mcp
+
+      - name: Call execute_code (this is what crashed under Alpine/musl)
+        run: |
+          RESPONSE=$(curl -sf \
+            -H 'content-type: application/json' \
+            -H 'accept: application/json, text/event-stream' \
+            -H "mcp-session-id: $SESSION_ID" \
+            -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"execute_code","arguments":{"code":"(async () => { return JSON.stringify({ ok: true }); })()"}}}' \
+            http://127.0.0.1:8000/mcp)
+          echo "$RESPONSE"
+          echo "$RESPONSE" | grep -q '"ok":true' || {
+            echo "::error::execute_code did not return the expected result — process likely crashed"
+            docker logs mcp-smoke
+            exit 1
+          }
+
+      - name: Container still alive (didn't segfault)
+        run: docker inspect -f '{{.State.Running}}' mcp-smoke | grep -q true
+
+      - name: Dump logs
+        if: always()
+        run: docker logs mcp-smoke || true

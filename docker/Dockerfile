@@ -2,25 +2,30 @@
 # with supergateway so it can run as a long-lived, network-reachable service
 # under signalk-container-helper's ManagedContainer (HTTP readiness/health checks).
 #
-# Built multi-arch (linux/amd64, linux/arm64). signalk-mcp-server depends on
-# isolated-vm, a native addon: its prebuilt binaries may not cover
-# linux-arm64-musl, in which case npm falls back to compiling from source, so
-# a toolchain (python3/make/g++) is installed for the npm install and removed
-# right after — a multi-stage COPY of just node_modules + bin symlinks was
-# tried first but broke npm's hoisted dependency resolution (supergateway's
-# own "yargs" dependency went missing at runtime); installing and stripping
-# in place avoids that entirely.
-FROM node:20-alpine
+# Built multi-arch (linux/amd64, linux/arm64), on a glibc base (NOT Alpine):
+# signalk-mcp-server's "code" execution mode depends on isolated-vm, a native
+# V8-isolate addon that is known to segfault under musl libc (Alpine) — every
+# execute_code tool call crashed the child process (SIGSEGV) on the Alpine
+# build. Debian's glibc doesn't have that problem, and also ships prebuilt
+# isolated-vm binaries for both amd64 and arm64, so a toolchain
+# (python3/make/g++) is only needed as a source-compile fallback and is
+# removed right after — a multi-stage COPY of just node_modules + bin
+# symlinks was tried first but broke npm's hoisted dependency resolution
+# (supergateway's own "yargs" dependency went missing at runtime); installing
+# and stripping in place avoids that entirely.
+FROM node:20-bookworm-slim
 
 ARG MCP_SERVER_VERSION=1.0.8
 ARG SUPERGATEWAY_VERSION=3.4.3
 
-RUN apk add --no-cache --virtual .build-deps python3 make g++ \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ wget \
     && npm install -g \
         signalk-mcp-server@${MCP_SERVER_VERSION} \
         supergateway@${SUPERGATEWAY_VERSION} \
-    && apk del .build-deps \
-    && adduser -D -H mcp
+    && apt-get purge -y --auto-remove python3 make g++ \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --no-create-home --shell /usr/sbin/nologin mcp
 
 ENV SIGNALK_HOST=host.docker.internal \
     SIGNALK_PORT=3000 \

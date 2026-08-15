@@ -49,6 +49,21 @@ then restart the server and enable the plugin from **Server → Plugin Config**.
 The admin UI panel shows container status, lets you pick an image tag, and
 apply updates — all via `signalk-container-helper`'s reusable UI components.
 
+### If Signal K has security enabled
+
+`signalk-mcp-server` connects to Signal K as a plain external HTTP/WS
+client — it has no concept of an auth token or API key (its docs describe
+auth as "handled by binding layer", i.e. not by the server itself). If your
+Signal K server has security enabled and rejects anonymous reads, tool calls
+will fail with `SignalK HTTP connection failed: HTTP 401: Unauthorized` in
+the container logs.
+
+Fix: **Server → Security → Access Control**, enable **"Allow readonly
+access to API and WS without login"**. That lets the container read vessel
+data without a login while leaving write access (and the rest of security)
+untouched. There is currently no way to give it a token instead — that would
+require upstream support in `signalk-mcp-server` itself.
+
 ## Updating
 
 A new image tag being published to GHCR does **not** by itself update an
