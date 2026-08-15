@@ -18,8 +18,9 @@ matching symptom below.
 | 2 | `🔧 error calling execute_code: MCP tools/call: SSE response carried no data frame` | signalk-ollama playground | signalk-ollama's MCP client only read the *first* SSE event of a Streamable HTTP response; a longer tool call streams progress notifications before the real result | [signalk-ollama v0.2.4](https://github.com/BoatHacks/signalk-ollama/releases/tag/v0.2.4) ([below](#2-sse-response-carried-no-data-frame-signalk-ollama-side)) |
 | 3 | `Child exited: code=null, signal=SIGSEGV` on every `execute_code` call, container logs | This container (`signalk-mcp-container`) | `signalk-mcp-server`'s code-execution mode depends on `isolated-vm`, a native V8-isolate addon that segfaults under musl libc — the image was built on `node:20-alpine` | [v0.1.6](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.6) ([below](#3-execute_code-segfaults-sigsegv-this-container)) |
 | 4 | `SignalK HTTP connection failed: HTTP 401: Unauthorized` in container logs; tool calls that touch real vessel data fail | This container | Signal K's security rejects anonymous reads; `signalk-mcp-server` does support a token (undocumented upstream) but this plugin didn't expose a way to set, request, or detect a missing one yet | [v0.1.7](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.7) adds a token field; [v0.1.8](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.8) adds one-click self-service request; [v0.1.9](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.9) makes the container's own health check catch a missing/bad token instead of only logging it ([below](#4-http-401-unauthorized-signal-k-security)) |
+| 5 | Plugin Config shows the plain auto-generated form (bare inputs, generic lock-icon Save button) instead of the custom panel (status card, image-version dropdown, "Request via SignalK" button, etc.) | Signal K Admin UI, Plugin Config page | The custom panel was never actually loadable on **any** server, since this plugin's first release: `package.json` was missing the `signalk-plugin-configurator` keyword signalk-server filters by, and the webpack build output the bundle to `dist/public/` instead of the top-level `public/` the server looks for | [v0.1.10](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.10) ([below](#5-plugin-config-shows-the-plain-fallback-form-not-the-custom-panel)) |
 
-Issues 1, 3, and 4 are all fixed or worked around on the
+Issues 1, 3, 4, and 5 are all fixed or worked around on the
 `signalk-mcp-container` side; issue 2 lives in `signalk-ollama`'s MCP client
 code and is included here because it was hit in the same debugging session
 and is easy to mistake for a container-side problem.
@@ -226,6 +227,57 @@ version (`1.0.8`) this container's `docker/Dockerfile` pins.
    to API and WS without login"**. This lets *any* client read vessel data
    without a login, not just this container — leaves write access (and the
    rest of Signal K's security) untouched, but is broader than options 1–2.
+
+---
+
+## 5. Plugin Config shows the plain fallback form, not the custom panel
+
+**Symptom**: the plugin's Plugin Config screen shows Signal K's generic
+auto-generated form — plain text inputs for each schema field, a lock-icon
+"Save Configuration" button — instead of the custom panel (status card,
+image-version dropdown, MCP tool connections/token UI). No error anywhere;
+it just silently looks like the plain form was always the whole UI.
+
+The giveaway that it's specifically *this* plugin's panel failing to load,
+not a server-wide limitation: if another plugin's custom panel (e.g.
+signalk-ollama's) renders fine on the same server, the server does support
+custom panels — this plugin's just isn't one of them.
+
+**Root cause**: two independent bugs, both present since this plugin's
+first release, both required for a custom panel to load at all:
+
+1. Signal K server discovers which installed plugins even *have* a custom
+   panel by filtering `package.json` for a specific keyword —
+   `signalk-plugin-configurator` — in `mountWebModules()`
+   (`interfaces/webapps.js`, called with that literal string). This
+   plugin's `keywords` never included it, so the server never attempted to
+   load the panel, full stop — no request, no error, nothing to see in
+   devtools.
+2. Even with that keyword present, `mountWebModules` only serves the
+   bundle from a `public/` directory it finds **directly under the package
+   root** (`fs.existsSync(webappPath + '/public/')`, then serves static
+   files from there at `/<pluginId>/`, matching the
+   `<script src="/<pluginId>/remoteEntry.js">` tag the Admin UI's `index.html`
+   is rendered with). `webpack.config.cjs` built the bundle to
+   `dist/public/` instead — one level too deep — so even a server that did
+   attempt to load it would 404 on `remoteEntry.js`.
+
+Contrast with `signalk-ollama`, whose webpack config outputs straight to
+top-level `public/` and whose `package.json` does carry
+`signalk-plugin-configurator` — which is exactly why its panel works and
+this one didn't.
+
+**Fix**: `webpack.config.cjs`'s output path changed to `public/` (was
+`dist/public/`); `package.json` gained the `signalk-plugin-configurator`
+keyword and `public` in its `files` array. Shipped in
+[v0.1.10](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.10).
+
+**Verify**: after updating, `npm pack --dry-run` (or inspecting the
+published tarball) should show `public/remoteEntry.js` at the tarball
+root, not nested under `dist/`. On the Signal K server itself, the Plugin
+Config page should show the "MCP Server Status" section with a status
+card and image-version dropdown at the top — if that's there, the panel
+loaded.
 
 ---
 

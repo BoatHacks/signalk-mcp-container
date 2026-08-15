@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2026-08-15
+
+### Fixed
+
+- Config panel (status card, image-version dropdown, MCP tool connections
+  UI, "Request via SignalK" token button, everything in
+  `PluginConfigurationPanel.tsx`) never actually loaded on any Signal K
+  server — since the plugin's first release — silently falling back to the
+  plain JSON-schema form instead. Two bugs:
+  1. `package.json`'s `keywords` never included
+     `signalk-plugin-configurator`, the exact string signalk-server's
+     `mountWebModules` filters installed plugins by
+     (`interfaces/webapps.js`) to decide which ones even have a custom
+     panel to try loading. Without it, the server never attempted to load
+     this plugin's panel at all — no error, just silence.
+  2. Even with that fixed, signalk-server only serves a plugin's panel
+     bundle if it finds a `public/` directory directly under the package
+     root (`fs.existsSync(webappPath + '/public/')`). The webpack config
+     built the bundle to `dist/public/` instead of top-level `public/`, the
+     wrong location for the server to find it at.
+
 ## [0.1.9] - 2026-08-15
 
 ### Added
