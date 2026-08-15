@@ -98,6 +98,13 @@ ready-made client: install it alongside this plugin and its chat traffic
 default MCP connection at `http://localhost:8000/mcp` automatically — no
 extra configuration needed as long as it's running on the default port.
 
+## Troubleshooting
+
+Hit a registry auth error pulling the image, a `SIGSEGV` on `execute_code`
+calls, an `HTTP 401` from Signal K, or an `SSE response carried no data
+frame` error in signalk-ollama's playground? All four are documented, with
+root causes and fixes, in [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md).
+
 ## Development
 
 ```bash
