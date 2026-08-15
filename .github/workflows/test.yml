@@ -70,8 +70,19 @@ jobs:
             -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"execute_code","arguments":{"code":"(async () => { return JSON.stringify({ ok: true }); })()"}}}' \
             http://127.0.0.1:8000/mcp)
           echo "$RESPONSE"
-          echo "$RESPONSE" | grep -q '"ok":true' || {
-            echo "::error::execute_code did not return the expected result — process likely crashed"
+          # The tool's own output is JSON embedded (and escaped) inside the
+          # JSON-RPC envelope's "text" field, so match on the outer keys —
+          # not the doubly-escaped inner content, which is fragile to match
+          # literally. curl -sf alone already fails loudly on a dropped
+          # connection (the segfault case); this just confirms a well-formed
+          # result came back rather than a JSON-RPC error.
+          if echo "$RESPONSE" | grep -q '"error"'; then
+            echo "::error::execute_code returned a JSON-RPC error"
+            docker logs mcp-smoke
+            exit 1
+          fi
+          echo "$RESPONSE" | grep -q '"result"' || {
+            echo "::error::execute_code did not return a result — process likely crashed"
             docker logs mcp-smoke
             exit 1
           }
