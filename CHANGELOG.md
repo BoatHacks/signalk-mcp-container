@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-08-15
+
+### Added
+
+- Config panel: "Request via SignalK" button next to the SignalK access
+  token field. Calls Signal K's standard access-request API
+  (`POST /signalk/v1/access/requests`) and polls until an admin approves
+  it under Server → Security → Access Requests, then fills the token in
+  automatically — no manual token generation needed. This is the same
+  device-pairing mechanism other Signal K client apps use, and a
+  different code path from the Admin UI's broken "generate device token"
+  wizard (`expiresIn` bug), so it isn't affected by that bug.
+
+### Changed
+
+- `TROUBLESHOOTING.md`: documents the self-service request flow as the
+  primary fix for `HTTP 401: Unauthorized`, with manual token generation
+  (CLI or existing device/user) and "allow readonly without login" as
+  fallbacks.
+
 ## [0.1.7] - 2026-08-15
 
 ### Added

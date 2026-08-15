@@ -45,7 +45,7 @@ then restart the server and enable the plugin from **Server → Plugin Config**.
 | SignalK port | Port the container uses to reach this SignalK server | this server's port |
 | SignalK TLS | Connect over `wss`/`https` | `false` |
 | Execution mode | `code` \| `tools` \| `hybrid` (see [signalk-mcp-server docs](https://github.com/VesselSense/signalk-mcp-server)) | `code` |
-| SignalK access token | Bearer token sent on every request to SignalK — only needed if SignalK's security rejects anonymous reads. Generate one under **Server → Security → Devices**. See [Troubleshooting](TROUBLESHOOTING.md#4-http-401-unauthorized-signal-k-security). | none |
+| SignalK access token | Bearer token sent on every request to SignalK — only needed if SignalK's security rejects anonymous reads. Click **"Request via SignalK"** in the config panel to request one (approve it under Server → Security → Access Requests), or paste one in manually. See [Troubleshooting](TROUBLESHOOTING.md#4-http-401-unauthorized-signal-k-security). | none |
 
 The admin UI panel shows container status, lets you pick an image tag, and
 apply updates — all via `signalk-container-helper`'s reusable UI components.

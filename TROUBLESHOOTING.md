@@ -17,7 +17,7 @@ matching symptom below.
 | 1 | `Startup failed: Failed to pull ghcr.io/boathacks/signalk-mcp-server-container:latest: Registry authentication failed.` | Signal K plugin startup (this plugin's `signalk-container` runtime) | GHCR container packages built via a workflow's `GITHUB_TOKEN` default to **private** regardless of the repo's own visibility | Manual, once — package settings ([below](#1-registry-authentication-failed-pulling-the-image)) |
 | 2 | `🔧 error calling execute_code: MCP tools/call: SSE response carried no data frame` | signalk-ollama playground | signalk-ollama's MCP client only read the *first* SSE event of a Streamable HTTP response; a longer tool call streams progress notifications before the real result | [signalk-ollama v0.2.4](https://github.com/BoatHacks/signalk-ollama/releases/tag/v0.2.4) ([below](#2-sse-response-carried-no-data-frame-signalk-ollama-side)) |
 | 3 | `Child exited: code=null, signal=SIGSEGV` on every `execute_code` call, container logs | This container (`signalk-mcp-container`) | `signalk-mcp-server`'s code-execution mode depends on `isolated-vm`, a native V8-isolate addon that segfaults under musl libc — the image was built on `node:20-alpine` | [v0.1.6](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.6) ([below](#3-execute_code-segfaults-sigsegv-this-container)) |
-| 4 | `SignalK HTTP connection failed: HTTP 401: Unauthorized` in container logs; tool calls that touch real vessel data fail | This container | Signal K's security rejects anonymous reads; `signalk-mcp-server` does support a token (undocumented upstream) but this plugin didn't expose a way to set it yet | [v0.1.7](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.7) adds a token field; Signal K-side setup still needed either way ([below](#4-http-401-unauthorized-signal-k-security)) |
+| 4 | `SignalK HTTP connection failed: HTTP 401: Unauthorized` in container logs; tool calls that touch real vessel data fail | This container | Signal K's security rejects anonymous reads; `signalk-mcp-server` does support a token (undocumented upstream) but this plugin didn't expose a way to set or request one yet | [v0.1.7](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.7) adds a token field; [v0.1.8](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.8) adds one-click self-service request via Signal K's access-request API ([below](#4-http-401-unauthorized-signal-k-security)) |
 
 Issues 1, 3, and 4 are all fixed or worked around on the
 `signalk-mcp-container` side; issue 2 lives in `signalk-ollama`'s MCP client
@@ -192,20 +192,31 @@ tested feature ("Fixed token authentication for remote SignalK servers
 (#5)... Tested with remote servers accessed via HTTP"), landed in the exact
 version (`1.0.8`) this container's `docker/Dockerfile` pins.
 
-**Fix — two options, in order of preference:**
+**Fix — in order of preference:**
 
-1. **Recommended: give the container a token, keep Signal K locked down.**
-   Since `signalk-mcp-container` v0.1.7, the plugin config has a **"SignalK
-   access token"** field (config panel → the standard settings form above
-   the custom panel). Generate a token under **Server → Security →
-   Devices**, paste it in, save — the plugin threads it through to the
-   container as `SIGNALK_TOKEN`. Signal K's security stays fully enabled;
-   only this container gets read access.
-2. **Fallback (no token management, weaker): allow anonymous reads.**
+1. **Recommended: request a token from the config panel.**
+   Since `signalk-mcp-container` v0.1.8, the config panel has a **"SignalK
+   access token"** field with a **"Request via SignalK"** button. It calls
+   Signal K's standard [access-request API](https://signalk.org/specification/1.7.0/doc/access_requests.html)
+   (`POST /signalk/v1/access/requests`) — the same mechanism mobile/other
+   client apps use to pair with Signal K, a different code path from the
+   broken "generate device token" wizard, so it isn't affected by the
+   `expiresIn` bug. Click it, then approve the pending request under
+   **Server → Security → Access Requests**; the panel polls automatically
+   and fills the token field in once approved. Click **Save Configuration**
+   to apply. Signal K's security stays fully enabled throughout; only this
+   plugin gets a token.
+2. **Also fine: generate a token by hand and paste it in.** Same config
+   field, filled in manually instead of via the button — e.g. using the
+   `signalk-generate-token` CLI Signal K server ships (`signalk-generate-token
+   -u <userid> -e <expiration> -s /path/to/security.json`, run inside the
+   Signal K server's own container/host, not this plugin's container),
+   or a token from an existing device/user that already has permissions.
+3. **Fallback (no token management, weaker): allow anonymous reads.**
    **Server → Security → Access Control** → enable **"Allow readonly access
    to API and WS without login"**. This lets *any* client read vessel data
    without a login, not just this container — leaves write access (and the
-   rest of Signal K's security) untouched, but is broader than option 1.
+   rest of Signal K's security) untouched, but is broader than options 1–2.
 
 ---
 

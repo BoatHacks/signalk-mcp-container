@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   panelStyles as S,
   SectionTitle,
@@ -14,6 +14,19 @@ import {
 } from "signalk-container-helper/ui";
 
 const BASE = "/plugins/signalk-mcp-container";
+
+/** How long to keep polling a pending access request before giving up. */
+const ACCESS_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
+const ACCESS_REQUEST_POLL_MS = 2000;
+
+interface AccessRequestResponse {
+  state?: "PENDING" | "COMPLETED";
+  href?: string;
+  accessRequest?: {
+    permission?: "APPROVED" | "DENIED";
+    token?: string;
+  };
+}
 
 interface PluginConfiguration {
   imageTag?: string;
@@ -36,6 +49,81 @@ export default function PluginConfigurationPanel({
   const cfg = configuration || {};
   const [tag, setTag] = useState(cfg.imageTag || "latest");
   const [saved, setSaved] = useState("");
+  const [token, setToken] = useState(cfg.signalkToken || "");
+  const [requesting, setRequesting] = useState(false);
+  const [requestMessage, setRequestMessage] = useState("");
+  const [requestError, setRequestError] = useState(false);
+  const mounted = useRef(true);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
+
+  const requestAccessToken = async () => {
+    setRequesting(true);
+    setRequestError(false);
+    setRequestMessage("Requesting access...");
+    try {
+      const clientId = crypto.randomUUID();
+      const res = await fetch("/signalk/v1/access/requests", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          clientId,
+          description: "signalk-mcp-container plugin",
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      let body = (await res.json()) as AccessRequestResponse;
+
+      if (body.state !== "COMPLETED") {
+        if (!body.href) {
+          throw new Error("SignalK did not return a request to poll");
+        }
+        setRequestMessage(
+          'Waiting for approval — go to Server → Security → "Access ' +
+            'Requests" and approve this request.',
+        );
+        body = await pollAccessRequest(body.href);
+      }
+
+      if (!mounted.current) return;
+      if (body.accessRequest?.permission === "APPROVED" && body.accessRequest.token) {
+        setToken(body.accessRequest.token);
+        setRequestMessage(
+          "Approved — token filled in below. Click Save Configuration to apply it.",
+        );
+      } else {
+        setRequestError(true);
+        setRequestMessage("Access request was denied.");
+      }
+    } catch (err) {
+      if (!mounted.current) return;
+      setRequestError(true);
+      setRequestMessage(
+        err instanceof Error ? err.message : String(err),
+      );
+    } finally {
+      if (mounted.current) setRequesting(false);
+    }
+  };
+
+  const pollAccessRequest = async (
+    href: string,
+  ): Promise<AccessRequestResponse> => {
+    const deadline = Date.now() + ACCESS_REQUEST_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+      if (!mounted.current) return {};
+      await new Promise((resolve) => setTimeout(resolve, ACCESS_REQUEST_POLL_MS));
+      const res = await fetch(href);
+      if (!res.ok) continue;
+      const body = (await res.json()) as AccessRequestResponse;
+      if (body.state === "COMPLETED") return body;
+    }
+    throw new Error("Timed out waiting for the access request to be approved");
+  };
 
   const { status, loading } = useStatusPoll<{
     status: string;
@@ -83,13 +171,35 @@ export default function PluginConfigurationPanel({
         />
       </FieldRow>
 
+      <FieldRow
+        label="SignalK access token"
+        hint="only needed if SignalK's security rejects anonymous reads"
+      >
+        <input
+          style={{ ...S.input, width: 260 }}
+          type="password"
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          placeholder="none"
+        />
+        <Button
+          onClick={requestAccessToken}
+          disabled={requesting}
+          style={{ marginLeft: 8 }}
+        >
+          {requesting ? "Requesting..." : "Request via SignalK"}
+        </Button>
+      </FieldRow>
+      {requestMessage && (
+        <ActionStatus message={requestMessage} error={requestError} />
+      )}
+
       <CollapsibleSection title="Advanced">
         <p style={S.hint}>
           Runs signalk-mcp-server in a managed container, exposing this
           vessel's SignalK data to MCP clients (e.g. Claude Desktop) over
-          Streamable HTTP. SignalK connection host/port, execution mode,
-          and (if SignalK security requires it) an access token are
-          configured via the standard Plugin Config JSON schema fields
+          Streamable HTTP. SignalK connection host/port and execution mode
+          are configured via the standard Plugin Config JSON schema fields
           above this panel.
         </p>
       </CollapsibleSection>
@@ -98,7 +208,7 @@ export default function PluginConfigurationPanel({
       <div style={{ marginTop: 24 }}>
         <Button
           onClick={() => {
-            save({ ...cfg, imageTag: tag });
+            save({ ...cfg, imageTag: tag, signalkToken: token });
             setSaved("Saved! Plugin will restart with new configuration.");
           }}
         >
