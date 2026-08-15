@@ -6,7 +6,6 @@ import {
   FieldRow,
   VersionSelect,
   UpdateControls,
-  CollapsibleSection,
   ActionStatus,
   Button,
   useStatusPoll,
@@ -69,6 +68,14 @@ export default function PluginConfigurationPanel({
   const [tag, setTag] = useState(cfg.imageTag || "latest");
   const [saved, setSaved] = useState("");
   const [token, setToken] = useState(cfg.signalkToken || "");
+  const [signalkHost, setSignalkHost] = useState(
+    cfg.signalkHost || "host.docker.internal",
+  );
+  const [signalkPort, setSignalkPort] = useState(String(cfg.signalkPort ?? 3000));
+  const [signalkTls, setSignalkTls] = useState(cfg.signalkTls ?? false);
+  const [executionMode, setExecutionMode] = useState(
+    cfg.executionMode || "code",
+  );
   const [requesting, setRequesting] = useState(false);
   const [requestMessage, setRequestMessage] = useState("");
   const [requestError, setRequestError] = useState(false);
@@ -190,6 +197,41 @@ export default function PluginConfigurationPanel({
         />
       </FieldRow>
 
+      <FieldRow label="SignalK host" hint="as seen from inside the container">
+        <input
+          style={{ ...S.input, width: 260 }}
+          value={signalkHost}
+          onChange={(e) => setSignalkHost(e.target.value)}
+          placeholder="host.docker.internal"
+        />
+      </FieldRow>
+      <FieldRow label="SignalK port">
+        <input
+          style={{ ...S.input, width: 90 }}
+          type="number"
+          value={signalkPort}
+          onChange={(e) => setSignalkPort(e.target.value)}
+        />
+      </FieldRow>
+      <FieldRow label="Connect over TLS (wss/https)">
+        <input
+          type="checkbox"
+          checked={signalkTls}
+          onChange={(e) => setSignalkTls(e.target.checked)}
+        />
+      </FieldRow>
+      <FieldRow label="Execution mode">
+        <select
+          style={S.select}
+          value={executionMode}
+          onChange={(e) => setExecutionMode(e.target.value)}
+        >
+          <option value="code">code</option>
+          <option value="tools">tools</option>
+          <option value="hybrid">hybrid</option>
+        </select>
+      </FieldRow>
+
       <FieldRow
         label="SignalK access token"
         hint="only needed if SignalK's security rejects anonymous reads"
@@ -213,21 +255,29 @@ export default function PluginConfigurationPanel({
         <ActionStatus message={requestMessage} error={requestError} />
       )}
 
-      <CollapsibleSection title="Advanced">
-        <p style={S.hint}>
-          Runs signalk-mcp-server in a managed container, exposing this
-          vessel's SignalK data to MCP clients (e.g. Claude Desktop) over
-          Streamable HTTP. SignalK connection host/port and execution mode
-          are configured via the standard Plugin Config JSON schema fields
-          above this panel.
-        </p>
-      </CollapsibleSection>
+      <p style={S.hint}>
+        Runs signalk-mcp-server in a managed container, exposing this
+        vessel's SignalK data to MCP clients (e.g. Claude Desktop) over
+        Streamable HTTP.
+      </p>
 
       <ActionStatus message={saved} />
       <div style={{ marginTop: 24 }}>
         <Button
           onClick={() => {
-            save({ ...cfg, imageTag: tag, signalkToken: token });
+            const portNumber = Number(signalkPort);
+            save({
+              ...cfg,
+              imageTag: tag,
+              signalkHost,
+              signalkPort:
+                signalkPort !== "" && Number.isFinite(portNumber)
+                  ? portNumber
+                  : 3000,
+              signalkTls,
+              executionMode,
+              signalkToken: token,
+            });
             setSaved("Saved! Plugin will restart with new configuration.");
           }}
         >

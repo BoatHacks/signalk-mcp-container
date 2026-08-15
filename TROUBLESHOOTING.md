@@ -283,6 +283,24 @@ Config page should show the "MCP Server Status" section with a status
 card and image-version dropdown at the top — if that's there, the panel
 loaded.
 
+Two follow-on bugs surfaced once the panel actually started loading (both
+only visible with a working panel, so they couldn't have been caught
+before this fix):
+
+- The panel's "Request via SignalK" button called `crypto.randomUUID()`,
+  which is only defined in "secure contexts" (HTTPS, or
+  `http://localhost`) — absent when the Admin UI is loaded over plain
+  HTTP on a LAN IP, the normal case on a boat. Fixed with a
+  `Math.random()`-based fallback in
+  [v0.1.11](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.11).
+- The panel never actually implemented input fields for SignalK
+  host/port/TLS/execution mode — those settings appeared to "disappear"
+  once the real panel replaced the schema-fallback form that had been the
+  only thing rendering them until then. Values were preserved (the Save
+  handler always spread the existing config), just not visible or
+  editable. Fixed in
+  [v0.1.12](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.12).
+
 ---
 
 ## Related, non-blocking oddity

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.12] - 2026-08-15
+
+### Fixed
+
+- The custom config panel never actually implemented input fields for
+  SignalK host/port/TLS/execution mode — it just claimed they were
+  "configured via the standard Plugin Config JSON schema fields above this
+  panel," which was only true while the panel-loading bug (fixed in
+  v0.1.10) meant the plain schema fallback form was the only thing anyone
+  ever saw. Now that the real panel loads, those fields were genuinely
+  missing from the UI — values were preserved under the hood (the Save
+  handler spread the existing config), but there was no way to view or
+  change them without editing the plugin's saved config JSON directly.
+  Added proper fields for all four to the panel's "Settings" section, and
+  removed the now-inaccurate hint text.
+
 ## [0.1.11] - 2026-08-15
 
 ### Fixed
