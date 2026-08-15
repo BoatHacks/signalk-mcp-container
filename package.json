@@ -1,6 +1,6 @@
 {
   "name": "signalk-mcp-container",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "SignalK plugin that runs signalk-mcp-server as a managed container, exposing marine data to MCP clients (e.g. Claude) over the network.",
   "type": "module",
   "main": "dist/index.js",

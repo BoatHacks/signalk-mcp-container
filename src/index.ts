@@ -15,6 +15,7 @@ interface McpContainerConfig {
   signalkPort?: number;
   signalkTls?: boolean;
   executionMode?: "code" | "tools" | "hybrid";
+  signalkToken?: string;
 }
 
 export default function (app: ServerAPI): Plugin {
@@ -55,7 +56,21 @@ export default function (app: ServerAPI): Plugin {
           enum: ["code", "tools", "hybrid"],
           default: "code",
         },
+        signalkToken: {
+          type: "string",
+          title: "SignalK access token (optional)",
+          description:
+            "Bearer token sent as 'Authorization: Bearer <token>' on every " +
+            "request to SignalK. Only needed if SignalK's security rejects " +
+            "anonymous reads — generate a device access token under " +
+            "Server → Security → Devices, or leave blank if you've enabled " +
+            "'Allow readonly access to API and WS without login' instead.",
+        },
       },
+    }),
+
+    uiSchema: () => ({
+      signalkToken: { "ui:widget": "password" },
     }),
 
     start(rawConfig: McpContainerConfig) {
@@ -74,6 +89,11 @@ export default function (app: ServerAPI): Plugin {
             SIGNALK_PORT: String(rawConfig?.signalkPort ?? 3000),
             SIGNALK_TLS: String(rawConfig?.signalkTls ?? false),
             EXECUTION_MODE: rawConfig?.executionMode ?? "code",
+            // Always present (even empty) so drift detection sees a stable
+            // key set across ensureRunning calls regardless of whether a
+            // token is configured — see signalk-mcp-server's
+            // SIGNALK_TOKEN / "Authorization: Bearer <token>" support.
+            SIGNALK_TOKEN: rawConfig?.signalkToken ?? "",
           },
           restart: "unless-stopped",
           resources: {

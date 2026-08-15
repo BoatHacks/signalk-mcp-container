@@ -21,6 +21,7 @@ interface PluginConfiguration {
   signalkPort?: number;
   signalkTls?: boolean;
   executionMode?: string;
+  signalkToken?: string;
 }
 
 interface PanelProps {
@@ -86,8 +87,9 @@ export default function PluginConfigurationPanel({
         <p style={S.hint}>
           Runs signalk-mcp-server in a managed container, exposing this
           vessel's SignalK data to MCP clients (e.g. Claude Desktop) over
-          Streamable HTTP. SignalK connection host/port and execution mode
-          are configured via the standard Plugin Config JSON schema fields
+          Streamable HTTP. SignalK connection host/port, execution mode,
+          and (if SignalK security requires it) an access token are
+          configured via the standard Plugin Config JSON schema fields
           above this panel.
         </p>
       </CollapsibleSection>

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2026-08-15
+
+### Added
+
+- New "SignalK access token" plugin setting, threaded through to the
+  container as `SIGNALK_TOKEN`. `signalk-mcp-server` supports Bearer-token
+  auth against Signal K (`Authorization: Bearer <token>`, undocumented in
+  its own README but present in its source and CHANGELOG since `1.0.8`) —
+  this lets the container work against a Signal K server with security
+  fully enabled, instead of requiring "Allow readonly access without
+  login" to be turned on for every client. Generate a token under
+  Server → Security → Devices.
+
+### Changed
+
+- `TROUBLESHOOTING.md`: corrected the `HTTP 401: Unauthorized` section,
+  which previously (incorrectly) stated `signalk-mcp-server` had no
+  auth-token support at all. Now documents the token as the recommended
+  fix, with "allow readonly without login" as a fallback.
+
 ## [0.1.6] - 2026-08-15
 
 ### Fixed
