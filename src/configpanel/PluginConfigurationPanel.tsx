@@ -28,6 +28,25 @@ interface AccessRequestResponse {
   };
 }
 
+/**
+ * `crypto.randomUUID()` only exists in "secure contexts" (HTTPS, or
+ * http://localhost) — it's simply undefined when the Admin UI is loaded
+ * over plain HTTP on a LAN IP, which is the common case on a boat. The
+ * access-request clientId doesn't need to be cryptographically random,
+ * just distinct per request, so fall back to a plain Math.random() v4-UUID
+ * shape instead of failing the request outright.
+ */
+function generateClientId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 interface PluginConfiguration {
   imageTag?: string;
   signalkHost?: string;
@@ -66,7 +85,7 @@ export default function PluginConfigurationPanel({
     setRequestError(false);
     setRequestMessage("Requesting access...");
     try {
-      const clientId = crypto.randomUUID();
+      const clientId = generateClientId();
       const res = await fetch("/signalk/v1/access/requests", {
         method: "POST",
         headers: { "content-type": "application/json" },

@@ -215,7 +215,11 @@ version (`1.0.8`) this container's `docker/Dockerfile` pins.
    **Server → Security → Access Requests**; the panel polls automatically
    and fills the token field in once approved. Click **Save Configuration**
    to apply. Signal K's security stays fully enabled throughout; only this
-   plugin gets a token.
+   plugin gets a token. (If the button throws `crypto.randomUUID is not a
+   function`, that API is only available in "secure contexts" — HTTPS, or
+   `http://localhost` — and is absent when the Admin UI is loaded over
+   plain HTTP on a LAN IP, the normal case on a boat; fixed with a fallback
+   in [v0.1.11](https://github.com/BoatHacks/signalk-mcp-container/releases/tag/v0.1.11).)
 2. **Also fine: generate a token by hand and paste it in.** Same config
    field, filled in manually instead of via the button — e.g. using the
    `signalk-generate-token` CLI Signal K server ships (`signalk-generate-token

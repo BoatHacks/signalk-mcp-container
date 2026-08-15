@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.11] - 2026-08-15
+
+### Fixed
+
+- "Request via SignalK" button threw `crypto.randomUUID is not a
+  function`. That API only exists in "secure contexts" (HTTPS, or
+  `http://localhost`) and is simply absent when the Admin UI is loaded
+  over plain HTTP on a LAN IP — the common case on a boat. The
+  access-request `clientId` doesn't need to be cryptographically random,
+  just distinct per request, so fall back to a `Math.random()`-based
+  v4-UUID shape when `crypto.randomUUID` isn't available.
+
 ## [0.1.10] - 2026-08-15
 
 ### Fixed
