@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.13] - 2026-08-16
+
+### Added
+
+- `GET /plugins/signalk-mcp-container/api/self-test` — a diagnostic route
+  that reproduces, server-side, the exact `initialize` → wait → `tools/call
+  execute_code` sequence an MCP client runs, and returns the raw
+  status/headers/body captured at each step. Meant for diagnosing the
+  "SSE response carried no data frame" failure (see this repo's
+  [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)) without needing shell access
+  to the box running the container — hit the
+  URL from a browser or `curl` on the SignalK host itself. Accepts optional
+  `delayMs` (default 35000, matching the observed gap between a chat
+  round's tool probe and the model's actual call) and `code` query params.
+
 ## [0.1.12] - 2026-08-15
 
 ### Fixed

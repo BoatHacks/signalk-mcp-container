@@ -110,6 +110,28 @@ response and no-matching-frame cases).
 
 Update `signalk-ollama` to `0.2.4` or later to pick up the fix.
 
+**A second, distinct cause of the same message**: an empty SSE response
+(zero events, not just a non-matching one) instead means the server-side
+MCP session went stale between when signalk-ollama probed available tools
+and when the model actually issued the call — e.g. an idle timeout, or this
+container restarting in between. `signalk-ollama` v0.2.6+ retries the call
+once (resetting and re-initializing the session) before giving up, which
+works around it but doesn't explain why the session went away.
+
+To check whether this container is the one dropping sessions, hit
+`GET /plugins/signalk-mcp-container/api/self-test` (from a browser or
+`curl` on the SignalK host, e.g.
+`http://localhost:3000/plugins/signalk-mcp-container/api/self-test`) — it
+runs `initialize` → waits 35s (the observed real-world gap) → `tools/call
+execute_code`, and returns the raw status/content-type/body captured at
+each step, so you don't need shell access to the box to reproduce it
+manually. Pass `?delayMs=5000` to shorten the wait while testing, or
+`?code=<js>` to run something other than the default vessel-name lookup.
+An empty `text/event-stream` body on the `tools/call` step confirms the
+container (or its `signalk-mcp-server`/supergateway) dropped the session;
+a connection error instead points at the container process itself dying
+(see issue 3 below).
+
 ---
 
 ## 3. `execute_code` segfaults (`SIGSEGV`) — this container
