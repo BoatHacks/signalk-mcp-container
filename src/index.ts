@@ -277,10 +277,20 @@ export default function (app: ServerAPI): Plugin {
           });
           await describe("tools/call", callResp);
 
-          res.status(200).json({ url, delayMs, sessionId, steps });
+          // An empty-but-200 text/event-stream body on tools/call is what
+          // supergateway produces when the signalk-mcp-server child process
+          // (spawned once per session, not per call) dies mid-request — its
+          // `exit` handler closes the transport without ever writing a data
+          // frame. The container's own log records that exit (e.g. "Child
+          // exited: code=null, signal=SIGSEGV"), so pull the tail here
+          // rather than requiring a separate `docker logs` round trip.
+          const logs = await container?.getLogs({ tail: 60 }).catch(() => null);
+
+          res.status(200).json({ url, delayMs, sessionId, steps, containerLogTail: logs });
         } catch (err) {
+          const logs = await container?.getLogs({ tail: 60 }).catch(() => null);
           steps.push({ step: "error", error: String(err) });
-          res.status(500).json({ url, delayMs, steps });
+          res.status(500).json({ url, delayMs, steps, containerLogTail: logs });
         }
       }
     },
