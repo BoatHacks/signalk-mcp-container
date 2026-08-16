@@ -1,5 +1,16 @@
 # signalk-mcp-container
 
+> **⚠️ Deprecated.** This plugin was an experiment in running
+> `signalk-mcp-server` as a managed container (bridging its stdio-only MCP
+> transport to HTTP via `supergateway`, wired up through
+> `signalk-container-helper`). In practice it didn't work out — a string of
+> architecture-, packaging-, and runtime-level issues (multi-arch image
+> builds, npm trusted-publishing, `isolated-vm`/Alpine segfaults, stale
+> container recreation, SignalK auth) made it a poor fit for this approach.
+> This repo is no longer maintained. Use
+> [`signalk-voice-llm`](https://github.com/dirkwa/signalk-voice-llm)
+> instead.
+
 A [SignalK](https://signalk.org) server plugin that runs
 [signalk-mcp-server](https://github.com/VesselSense/signalk-mcp-server) as a
 **managed container**, so an MCP client (e.g. Claude Desktop, or any other

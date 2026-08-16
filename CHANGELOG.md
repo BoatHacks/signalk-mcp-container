@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-16
+
+### Deprecated
+
+- This plugin is deprecated and no longer maintained. It was an experiment
+  in running `signalk-mcp-server` as a managed container, bridged to HTTP
+  via `supergateway`; the sequence of issues worked through in this
+  changelog (multi-arch builds, npm trusted publishing, `isolated-vm`
+  segfaults on Alpine, stale-container recreation, SignalK auth) made this
+  approach more trouble than it was worth. This is the final release; the
+  npm package is marked deprecated. Use
+  [`signalk-voice-llm`](https://github.com/dirkwa/signalk-voice-llm)
+  instead.
+
 ## [0.1.14] - 2026-08-16
 
 ### Added
