@@ -35,5 +35,9 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm publish
-      - run: |
-          npm deprecate signalk-mcp-container@* "Deprecated: this experiment didn't work out. Use signalk-voice-llm instead: https://github.com/dirkwa/signalk-voice-llm"
+      # `npm deprecate` is intentionally NOT run here: npm's trusted-
+      # publishing OIDC token is scoped to a single `npm publish` action —
+      # a follow-up `npm deprecate` in the same job 404s (PUT to the
+      # package doc isn't authorized by that token). Deprecation has to be
+      # set manually: `npm deprecate signalk-mcp-container@* "<message>"`
+      # with a real (2FA-authenticated) npm login.
